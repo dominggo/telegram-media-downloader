@@ -34,7 +34,7 @@ class TelegramPhotoDownloader:
             flood_sleep_threshold=60  # Wait up to 60 seconds if rate limited
         )
 
-    async def download_media(self, chat_id, start_date=None, end_date=None, output_dir='downloads', media_types=['photo'], file_extensions=None):
+    async def download_media(self, chat_id, start_date=None, end_date=None, output_dir='downloads', media_types=['photo'], file_extensions=None, show_count=False):
         """
         Download photos, videos, and documents from a specific chat within a date range.
 
@@ -45,6 +45,7 @@ class TelegramPhotoDownloader:
             output_dir: Directory to save downloaded media
             media_types: List of media types to download ['photo', 'video', 'document', or combinations]
             file_extensions: List of file extensions to filter (e.g., ['pdf', 'docx']) - only for documents
+            show_count: Whether to count total files before downloading (default: False)
         """
         await self.client.start(phone=self.phone_number)
         print(f"Connected to Telegram as {self.phone_number}")
@@ -90,68 +91,79 @@ class TelegramPhotoDownloader:
         media_type_str = ' and '.join(media_types)
         if file_extensions and 'document' in media_types:
             ext_str = ', '.join(file_extensions)
-            print(f"\nScanning for {media_type_str} (extensions: {ext_str})...")
+            print(f"\nSearching for {media_type_str} (extensions: {ext_str})...")
         else:
-            print(f"\nScanning for {media_type_str}...")
+            print(f"\nSearching for {media_type_str}...")
         if start_date:
             print(f"Start date: {start_date.strftime('%Y-%m-%d %H:%M:%S')}")
         if end_date:
             print(f"End date: {end_date.strftime('%Y-%m-%d %H:%M:%S')}")
         print()
 
-        # First pass: Count total files to download
-        print("Counting files to download...")
+        # Optional first pass: Count total files to download
         total_files = 0
-        async for message in self.client.iter_messages(chat, reverse=False):
-            # Check date range
-            if start_date and message.date < start_date:
-                continue
-            if end_date and message.date > end_date:
-                continue
+        if show_count:
+            print("Counting files to download...")
+            message_count = 0
+            async for message in self.client.iter_messages(chat, reverse=False):
+                message_count += 1
 
-            # Check if message contains media
-            if not message.media:
-                continue
+                # Show progress every 100 messages
+                if message_count % 100 == 0:
+                    print(f"Scanned {message_count} messages...")
 
-            # Check for photos
-            if 'photo' in media_types and isinstance(message.media, MessageMediaPhoto):
-                total_files += 1
+                # Check date range
+                if start_date and message.date < start_date:
+                    continue
+                if end_date and message.date > end_date:
+                    continue
 
-            # Check for videos and documents
-            elif isinstance(message.media, MessageMediaDocument):
-                doc = message.media.document
-                mime_type = doc.mime_type if hasattr(doc, 'mime_type') else ''
+                # Check if message contains media
+                if not message.media:
+                    continue
 
-                # Get original filename from document attributes
-                original_filename = None
-                for attr in doc.attributes:
-                    if hasattr(attr, 'file_name'):
-                        original_filename = attr.file_name
-                        break
-
-                # Check for videos
-                if 'video' in media_types and mime_type.startswith('video/'):
+                # Check for photos
+                if 'photo' in media_types and isinstance(message.media, MessageMediaPhoto):
                     total_files += 1
 
-                # Check for documents
-                elif 'document' in media_types and original_filename:
-                    # Get file extension
-                    file_ext = os.path.splitext(original_filename)[1].lstrip('.').lower()
+                # Check for videos and documents
+                elif isinstance(message.media, MessageMediaDocument):
+                    doc = message.media.document
+                    mime_type = doc.mime_type if hasattr(doc, 'mime_type') else ''
 
-                    # Filter by extension if specified
-                    if file_extensions and file_ext not in file_extensions:
-                        continue
+                    # Get original filename from document attributes
+                    original_filename = None
+                    for attr in doc.attributes:
+                        if hasattr(attr, 'file_name'):
+                            original_filename = attr.file_name
+                            break
 
-                    total_files += 1
+                    # Check for videos
+                    if 'video' in media_types and mime_type.startswith('video/'):
+                        total_files += 1
 
-        print(f"Found {total_files} file(s) to download.\n")
+                    # Check for documents
+                    elif 'document' in media_types and original_filename:
+                        # Get file extension
+                        file_ext = os.path.splitext(original_filename)[1].lstrip('.').lower()
 
-        if total_files == 0:
-            print("No files found matching your criteria.")
-            return
+                        # Filter by extension if specified
+                        if file_extensions and file_ext not in file_extensions:
+                            continue
 
-        # Second pass: Download files
-        print("Starting download...\n")
+                        total_files += 1
+
+            print(f"Found {total_files} file(s) to download.\n")
+
+            if total_files == 0:
+                print("No files found matching your criteria.")
+                return
+
+        # Download files
+        if show_count:
+            print("Starting download...\n")
+        else:
+            print("Starting download (counting disabled for faster start)...\n")
         photo_count = 0
         video_count = 0
         document_count = 0
@@ -182,14 +194,23 @@ class TelegramPhotoDownloader:
                 try:
                     downloaded_count += 1
                     await self.client.download_media(message.media, filepath)
-                    print(f"✓ Downloaded {downloaded_count}/{total_files}: {filename}")
+                    if show_count:
+                        print(f"✓ Downloaded {downloaded_count}/{total_files}: {filename}")
+                    else:
+                        print(f"✓ Downloaded {downloaded_count}: {filename}")
                     downloaded = True
                 except asyncio.CancelledError:
                     print(f"\n✗ Download interrupted by user (Ctrl+C)")
-                    print(f"Downloaded {downloaded_count - 1}/{total_files} files before interruption")
+                    if show_count:
+                        print(f"Downloaded {downloaded_count - 1}/{total_files} files before interruption")
+                    else:
+                        print(f"Downloaded {downloaded_count - 1} files before interruption")
                     return
                 except Exception as e:
-                    print(f"✗ Failed {downloaded_count}/{total_files}: {filename} - {e}")
+                    if show_count:
+                        print(f"✗ Failed {downloaded_count}/{total_files}: {filename} - {e}")
+                    else:
+                        print(f"✗ Failed {downloaded_count}: {filename} - {e}")
                     skipped_count += 1
 
             # Check for videos and documents
@@ -225,14 +246,23 @@ class TelegramPhotoDownloader:
                     try:
                         downloaded_count += 1
                         await self.client.download_media(message.media, filepath)
-                        print(f"✓ Downloaded {downloaded_count}/{total_files}: {filename}")
+                        if show_count:
+                            print(f"✓ Downloaded {downloaded_count}/{total_files}: {filename}")
+                        else:
+                            print(f"✓ Downloaded {downloaded_count}: {filename}")
                         downloaded = True
                     except asyncio.CancelledError:
                         print(f"\n✗ Download interrupted by user (Ctrl+C)")
-                        print(f"Downloaded {downloaded_count - 1}/{total_files} files before interruption")
+                        if show_count:
+                            print(f"Downloaded {downloaded_count - 1}/{total_files} files before interruption")
+                        else:
+                            print(f"Downloaded {downloaded_count - 1} files before interruption")
                         return
                     except Exception as e:
-                        print(f"✗ Failed {downloaded_count}/{total_files}: {filename} - {e}")
+                        if show_count:
+                            print(f"✗ Failed {downloaded_count}/{total_files}: {filename} - {e}")
+                        else:
+                            print(f"✗ Failed {downloaded_count}: {filename} - {e}")
                         skipped_count += 1
 
                 # Check for documents
@@ -254,14 +284,23 @@ class TelegramPhotoDownloader:
                     try:
                         downloaded_count += 1
                         await self.client.download_media(message.media, filepath)
-                        print(f"✓ Downloaded {downloaded_count}/{total_files}: {filename}")
+                        if show_count:
+                            print(f"✓ Downloaded {downloaded_count}/{total_files}: {filename}")
+                        else:
+                            print(f"✓ Downloaded {downloaded_count}: {filename}")
                         downloaded = True
                     except asyncio.CancelledError:
                         print(f"\n✗ Download interrupted by user (Ctrl+C)")
-                        print(f"Downloaded {downloaded_count - 1}/{total_files} files before interruption")
+                        if show_count:
+                            print(f"Downloaded {downloaded_count - 1}/{total_files} files before interruption")
+                        else:
+                            print(f"Downloaded {downloaded_count - 1} files before interruption")
                         return
                     except Exception as e:
-                        print(f"✗ Failed {downloaded_count}/{total_files}: {filename} - {e}")
+                        if show_count:
+                            print(f"✗ Failed {downloaded_count}/{total_files}: {filename} - {e}")
+                        else:
+                            print(f"✗ Failed {downloaded_count}: {filename} - {e}")
                         skipped_count += 1
 
         print(f"\n{'='*50}")
@@ -359,6 +398,8 @@ Note: You need to create a Telegram app at https://my.telegram.org to get API_ID
                         help='Media type to download: photo, video, document, both (photo+video), or all (default: photo)')
     parser.add_argument('--extensions',
                         help='File extensions to filter for documents (comma-separated, e.g., pdf,docx,zip). Only applies when media-type is document or all')
+    parser.add_argument('--show-count', action='store_true',
+                        help='Count total files before downloading (slower start, shows progress as X/Y)')
     parser.add_argument('--list-chats', action='store_true', help='List all available chats and exit')
 
     args = parser.parse_args()
@@ -419,7 +460,8 @@ Note: You need to create a Telegram app at https://my.telegram.org to get API_ID
                 end_date=end_date,
                 output_dir=args.output_dir,
                 media_types=media_types,
-                file_extensions=file_extensions
+                file_extensions=file_extensions,
+                show_count=args.show_count
             )
     finally:
         await downloader.disconnect()
