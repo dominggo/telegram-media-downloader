@@ -243,25 +243,25 @@ async def main():
         epilog="""
 Examples:
   # List all your chats
-  python telegram_photo_downloader.py --list-chats
+  python telegram_downloader.py --list-chats
 
   # Download all photos from a chat
-  python telegram_photo_downloader.py --chat-id -1001234567890
+  python telegram_downloader.py --chat-id -1001234567890
 
   # Download all videos from a chat
-  python telegram_photo_downloader.py --chat-id -1001234567890 --media-type video
+  python telegram_downloader.py --chat-id -1001234567890 --media-type video
 
   # Download all PDF files from a chat
-  python telegram_photo_downloader.py --chat-id -1001234567890 --media-type document --extensions pdf
+  python telegram_downloader.py --chat-id -1001234567890 --media-type document --extensions pdf
 
   # Download PDF and DOCX files from December 2024
-  python telegram_photo_downloader.py --chat-id -1001234567890 --media-type document --extensions pdf,docx --start-date 2024-12-01 --end-date 2024-12-31
+  python telegram_downloader.py --chat-id -1001234567890 --media-type document --extensions pdf,docx --start-date 2024-12-01 --end-date 2024-12-31
 
   # Download all documents (any extension) from a date range
-  python telegram_photo_downloader.py --chat-id -1001234567890 --media-type document --start-date 2024-01-01
+  python telegram_downloader.py --chat-id -1001234567890 --media-type document --start-date 2024-01-01
 
   # Download photos, videos, and documents
-  python telegram_photo_downloader.py --chat-id -1001234567890 --media-type all
+  python telegram_downloader.py --chat-id -1001234567890 --media-type all
 
 Note: You need to create a Telegram app at https://my.telegram.org to get API_ID and API_HASH
         """

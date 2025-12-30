@@ -58,7 +58,7 @@ python telegram_photo_downloader.py --api-id YOUR_API_ID --api-hash YOUR_API_HAS
 First, find the chat ID you want to download from:
 
 ```bash
-python telegram_photo_downloader.py --list-chats
+python telegram_downloader.py --list-chats
 ```
 
 This will display all your chats with their IDs.
@@ -66,98 +66,98 @@ This will display all your chats with their IDs.
 ### Download All Photos from a Chat
 
 ```bash
-python telegram_photo_downloader.py --chat-id CHAT_ID
+python telegram_downloader.py --chat-id CHAT_ID
 ```
 
 ### Download All Videos from a Chat
 
 ```bash
-python telegram_photo_downloader.py --chat-id CHAT_ID --media-type video
+python telegram_downloader.py --chat-id CHAT_ID --media-type video
 ```
 
 ### Download Both Photos and Videos
 
 ```bash
-python telegram_photo_downloader.py --chat-id CHAT_ID --media-type both
+python telegram_downloader.py --chat-id CHAT_ID --media-type both
 ```
 
 ### Download Documents (All Types)
 
 ```bash
-python telegram_photo_downloader.py --chat-id CHAT_ID --media-type document
+python telegram_downloader.py --chat-id CHAT_ID --media-type document
 ```
 
 ### Download Specific File Types
 
 ```bash
 # Download only PDF files
-python telegram_photo_downloader.py --chat-id CHAT_ID --media-type document --extensions pdf
+python telegram_downloader.py --chat-id CHAT_ID --media-type document --extensions pdf
 
 # Download PDF and DOCX files
-python telegram_photo_downloader.py --chat-id CHAT_ID --media-type document --extensions pdf,docx
+python telegram_downloader.py --chat-id CHAT_ID --media-type document --extensions pdf,docx
 
 # Download multiple file types
-python telegram_photo_downloader.py --chat-id CHAT_ID --media-type document --extensions pdf,docx,zip,xlsx
+python telegram_downloader.py --chat-id CHAT_ID --media-type document --extensions pdf,docx,zip,xlsx
 ```
 
 ### Download Media from a Specific Date Range
 
 ```bash
 # Download photos from January 2024
-python telegram_photo_downloader.py --chat-id CHAT_ID --start-date 2024-01-01 --end-date 2024-01-31
+python telegram_downloader.py --chat-id CHAT_ID --start-date 2024-01-01 --end-date 2024-01-31
 
 # Download videos from December 2024
-python telegram_photo_downloader.py --chat-id CHAT_ID --start-date 2024-12-01 --end-date 2024-12-31 --media-type video
+python telegram_downloader.py --chat-id CHAT_ID --start-date 2024-12-01 --end-date 2024-12-31 --media-type video
 
 # Download PDF files from December 2024
-python telegram_photo_downloader.py --chat-id CHAT_ID --start-date 2024-12-01 --end-date 2024-12-31 --media-type document --extensions pdf
+python telegram_downloader.py --chat-id CHAT_ID --start-date 2024-12-01 --end-date 2024-12-31 --media-type document --extensions pdf
 
 # Download all media types from a specific date with time
-python telegram_photo_downloader.py --chat-id CHAT_ID --start-date "2024-01-01 10:00:00" --end-date "2024-01-01 18:00:00" --media-type all
+python telegram_downloader.py --chat-id CHAT_ID --start-date "2024-01-01 10:00:00" --end-date "2024-01-01 18:00:00" --media-type all
 ```
 
 ### Download Everything
 
 ```bash
 # Download photos, videos, and all documents
-python telegram_photo_downloader.py --chat-id CHAT_ID --media-type all
+python telegram_downloader.py --chat-id CHAT_ID --media-type all
 
 # Download everything from the last 7 days
-python telegram_photo_downloader.py --chat-id CHAT_ID --start-date 2025-12-23 --media-type all
+python telegram_downloader.py --chat-id CHAT_ID --start-date 2025-12-23 --media-type all
 ```
 
 ### Specify Custom Output Directory
 
 ```bash
-python telegram_photo_downloader.py --chat-id CHAT_ID --output-dir my_media --media-type both
+python telegram_downloader.py --chat-id CHAT_ID --output-dir my_media --media-type both
 ```
 
 ## Examples
 
 ```bash
 # List all chats
-python telegram_photo_downloader.py --list-chats
+python telegram_downloader.py --list-chats
 
 # Download all photos from a group
-python telegram_photo_downloader.py --chat-id -1001234567890
+python telegram_downloader.py --chat-id -1001234567890
 
 # Download all videos from a group
-python telegram_photo_downloader.py --chat-id -1001234567890 --media-type video
+python telegram_downloader.py --chat-id -1001234567890 --media-type video
 
 # Download all PDF files from a group
-python telegram_photo_downloader.py --chat-id -1001234567890 --media-type document --extensions pdf
+python telegram_downloader.py --chat-id -1001234567890 --media-type document --extensions pdf
 
 # Download PDF and DOCX files from December 2024
-python telegram_photo_downloader.py --chat-id -1001234567890 --start-date 2024-12-01 --end-date 2024-12-31 --media-type document --extensions pdf,docx
+python telegram_downloader.py --chat-id -1001234567890 --start-date 2024-12-01 --end-date 2024-12-31 --media-type document --extensions pdf,docx
 
 # Download both photos and videos
-python telegram_photo_downloader.py --chat-id -1001234567890 --media-type both
+python telegram_downloader.py --chat-id -1001234567890 --media-type both
 
 # Download everything (photos, videos, all documents)
-python telegram_photo_downloader.py --chat-id -1001234567890 --media-type all
+python telegram_downloader.py --chat-id -1001234567890 --media-type all
 
 # Download all documents (any file type) from a specific date
-python telegram_photo_downloader.py --chat-id username --start-date 2024-01-01 --media-type document
+python telegram_downloader.py --chat-id username --start-date 2024-01-01 --media-type document
 ```
 
 ## Notes
