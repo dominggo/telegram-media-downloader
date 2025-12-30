@@ -76,11 +76,6 @@ class TelegramPhotoDownloader:
         if not os.path.exists(chat_dir):
             os.makedirs(chat_dir)
 
-        photo_count = 0
-        video_count = 0
-        document_count = 0
-        skipped_count = 0
-
         # Normalize file extensions
         if file_extensions:
             file_extensions = [ext.lower().lstrip('.') for ext in file_extensions]
@@ -89,14 +84,73 @@ class TelegramPhotoDownloader:
         media_type_str = ' and '.join(media_types)
         if file_extensions and 'document' in media_types:
             ext_str = ', '.join(file_extensions)
-            print(f"\nSearching for {media_type_str} (extensions: {ext_str})...")
+            print(f"\nScanning for {media_type_str} (extensions: {ext_str})...")
         else:
-            print(f"\nSearching for {media_type_str}...")
+            print(f"\nScanning for {media_type_str}...")
         if start_date:
             print(f"Start date: {start_date.strftime('%Y-%m-%d %H:%M:%S')}")
         if end_date:
             print(f"End date: {end_date.strftime('%Y-%m-%d %H:%M:%S')}")
         print()
+
+        # First pass: Count total files to download
+        print("Counting files to download...")
+        total_files = 0
+        async for message in self.client.iter_messages(chat, reverse=False):
+            # Check date range
+            if start_date and message.date < start_date:
+                continue
+            if end_date and message.date > end_date:
+                continue
+
+            # Check if message contains media
+            if not message.media:
+                continue
+
+            # Check for photos
+            if 'photo' in media_types and isinstance(message.media, MessageMediaPhoto):
+                total_files += 1
+
+            # Check for videos and documents
+            elif isinstance(message.media, MessageMediaDocument):
+                doc = message.media.document
+                mime_type = doc.mime_type if hasattr(doc, 'mime_type') else ''
+
+                # Get original filename from document attributes
+                original_filename = None
+                for attr in doc.attributes:
+                    if hasattr(attr, 'file_name'):
+                        original_filename = attr.file_name
+                        break
+
+                # Check for videos
+                if 'video' in media_types and mime_type.startswith('video/'):
+                    total_files += 1
+
+                # Check for documents
+                elif 'document' in media_types and original_filename:
+                    # Get file extension
+                    file_ext = os.path.splitext(original_filename)[1].lstrip('.').lower()
+
+                    # Filter by extension if specified
+                    if file_extensions and file_ext not in file_extensions:
+                        continue
+
+                    total_files += 1
+
+        print(f"Found {total_files} file(s) to download.\n")
+
+        if total_files == 0:
+            print("No files found matching your criteria.")
+            return
+
+        # Second pass: Download files
+        print("Starting download...\n")
+        photo_count = 0
+        video_count = 0
+        document_count = 0
+        skipped_count = 0
+        downloaded_count = 0
 
         # Iterate through messages
         async for message in self.client.iter_messages(chat, reverse=False):
@@ -120,11 +174,12 @@ class TelegramPhotoDownloader:
                 filepath = os.path.join(chat_dir, filename)
 
                 try:
+                    downloaded_count += 1
                     await self.client.download_media(message.media, filepath)
-                    print(f"✓ Downloaded photo: {filename}")
+                    print(f"✓ Downloaded {downloaded_count}/{total_files}: {filename}")
                     downloaded = True
                 except Exception as e:
-                    print(f"✗ Failed to download photo {filename}: {e}")
+                    print(f"✗ Failed {downloaded_count}/{total_files}: {filename} - {e}")
                     skipped_count += 1
 
             # Check for videos and documents
@@ -158,11 +213,12 @@ class TelegramPhotoDownloader:
                     filepath = os.path.join(chat_dir, filename)
 
                     try:
+                        downloaded_count += 1
                         await self.client.download_media(message.media, filepath)
-                        print(f"✓ Downloaded video: {filename}")
+                        print(f"✓ Downloaded {downloaded_count}/{total_files}: {filename}")
                         downloaded = True
                     except Exception as e:
-                        print(f"✗ Failed to download video {filename}: {e}")
+                        print(f"✗ Failed {downloaded_count}/{total_files}: {filename} - {e}")
                         skipped_count += 1
 
                 # Check for documents
@@ -182,11 +238,12 @@ class TelegramPhotoDownloader:
                     filepath = os.path.join(chat_dir, filename)
 
                     try:
+                        downloaded_count += 1
                         await self.client.download_media(message.media, filepath)
-                        print(f"✓ Downloaded document: {filename}")
+                        print(f"✓ Downloaded {downloaded_count}/{total_files}: {filename}")
                         downloaded = True
                     except Exception as e:
-                        print(f"✗ Failed to download document {filename}: {e}")
+                        print(f"✗ Failed {downloaded_count}/{total_files}: {filename} - {e}")
                         skipped_count += 1
 
         print(f"\n{'='*50}")
