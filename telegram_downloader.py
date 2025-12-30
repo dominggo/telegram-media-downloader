@@ -26,7 +26,13 @@ class TelegramPhotoDownloader:
         self.api_id = api_id
         self.api_hash = api_hash
         self.phone_number = phone_number
-        self.client = TelegramClient('session_' + phone_number, api_id, api_hash)
+        # Use flood_sleep_threshold to handle rate limiting
+        self.client = TelegramClient(
+            'session_' + phone_number,
+            api_id,
+            api_hash,
+            flood_sleep_threshold=60  # Wait up to 60 seconds if rate limited
+        )
 
     async def download_media(self, chat_id, start_date=None, end_date=None, output_dir='downloads', media_types=['photo'], file_extensions=None):
         """
@@ -178,6 +184,10 @@ class TelegramPhotoDownloader:
                     await self.client.download_media(message.media, filepath)
                     print(f"✓ Downloaded {downloaded_count}/{total_files}: {filename}")
                     downloaded = True
+                except asyncio.CancelledError:
+                    print(f"\n✗ Download interrupted by user (Ctrl+C)")
+                    print(f"Downloaded {downloaded_count - 1}/{total_files} files before interruption")
+                    return
                 except Exception as e:
                     print(f"✗ Failed {downloaded_count}/{total_files}: {filename} - {e}")
                     skipped_count += 1
@@ -217,6 +227,10 @@ class TelegramPhotoDownloader:
                         await self.client.download_media(message.media, filepath)
                         print(f"✓ Downloaded {downloaded_count}/{total_files}: {filename}")
                         downloaded = True
+                    except asyncio.CancelledError:
+                        print(f"\n✗ Download interrupted by user (Ctrl+C)")
+                        print(f"Downloaded {downloaded_count - 1}/{total_files} files before interruption")
+                        return
                     except Exception as e:
                         print(f"✗ Failed {downloaded_count}/{total_files}: {filename} - {e}")
                         skipped_count += 1
@@ -242,6 +256,10 @@ class TelegramPhotoDownloader:
                         await self.client.download_media(message.media, filepath)
                         print(f"✓ Downloaded {downloaded_count}/{total_files}: {filename}")
                         downloaded = True
+                    except asyncio.CancelledError:
+                        print(f"\n✗ Download interrupted by user (Ctrl+C)")
+                        print(f"Downloaded {downloaded_count - 1}/{total_files} files before interruption")
+                        return
                     except Exception as e:
                         print(f"✗ Failed {downloaded_count}/{total_files}: {filename} - {e}")
                         skipped_count += 1
@@ -273,7 +291,11 @@ class TelegramPhotoDownloader:
 
     async def disconnect(self):
         """Disconnect the client."""
-        await self.client.disconnect()
+        try:
+            await self.client.disconnect()
+        except Exception as e:
+            # Ignore disconnect errors (often session database locks)
+            pass
 
 
 def parse_date(date_string):
