@@ -264,24 +264,27 @@ class TelegramPhotoDownloader:
             file_type = item['type']
             filepath = os.path.join(chat_dir, filename)
 
-            # Track if we've shown 0% yet
-            shown_start = False
+            # Track progress milestones shown
+            shown_milestones = set()
 
             # Progress callback to show download progress
             def progress_callback(current, total):
-                nonlocal shown_start
+                nonlocal shown_milestones
                 percentage = (current / total) * 100 if total > 0 else 0
                 mb_total = total / (1024 * 1024)
+                mb_current = current / (1024 * 1024)
 
-                # Show 0% when download starts
-                if not shown_start:
-                    print(f"⬇ Starting [{index}/{total_files}] {filename}: 0% (0.0/{mb_total:.1f} MB)")
-                    shown_start = True
+                # Show progress at key milestones: 0%, 25%, 50%, 75%
+                milestones = [0, 25, 50, 75]
 
-                # Show progress every 10%
-                if int(percentage) % 10 == 0 and int(percentage) > 0:
-                    mb_current = current / (1024 * 1024)
-                    print(f"  [{index}/{total_files}] {filename}: {percentage:.0f}% ({mb_current:.1f}/{mb_total:.1f} MB)")
+                for milestone in milestones:
+                    if percentage >= milestone and milestone not in shown_milestones:
+                        shown_milestones.add(milestone)
+                        if milestone == 0:
+                            print(f"⬇ Starting [{index}/{total_files}] {filename}: 0% (0.0/{mb_total:.1f} MB)")
+                        else:
+                            print(f"  [{index}/{total_files}] {filename}: {milestone}% ({mb_current:.1f}/{mb_total:.1f} MB)")
+                        break
 
             try:
                 # Download with progress callback
