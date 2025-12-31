@@ -264,13 +264,23 @@ class TelegramPhotoDownloader:
             file_type = item['type']
             filepath = os.path.join(chat_dir, filename)
 
+            # Track if we've shown 0% yet
+            shown_start = False
+
             # Progress callback to show download progress
             def progress_callback(current, total):
+                nonlocal shown_start
                 percentage = (current / total) * 100 if total > 0 else 0
+                mb_total = total / (1024 * 1024)
+
+                # Show 0% when download starts
+                if not shown_start:
+                    print(f"⬇ Starting [{index}/{total_files}] {filename}: 0% (0.0/{mb_total:.1f} MB)")
+                    shown_start = True
+
                 # Show progress every 10%
                 if int(percentage) % 10 == 0 and int(percentage) > 0:
                     mb_current = current / (1024 * 1024)
-                    mb_total = total / (1024 * 1024)
                     print(f"  [{index}/{total_files}] {filename}: {percentage:.0f}% ({mb_current:.1f}/{mb_total:.1f} MB)")
 
             try:
@@ -301,13 +311,18 @@ class TelegramPhotoDownloader:
                     skipped_count += 1
                 print(f"✗ Failed {downloaded_count}/{total_files}: {filename} - {e}")
 
-        # Download files in batches of 5 concurrent downloads
-        batch_size = 5
+        # Use semaphore to maintain exactly 5 concurrent downloads
+        max_concurrent = 5
+        semaphore = asyncio.Semaphore(max_concurrent)
+
+        async def download_with_semaphore(item, index):
+            async with semaphore:
+                await download_file(item, index)
+
+        # Start all downloads with semaphore controlling concurrency
         try:
-            for i in range(0, len(messages_to_download), batch_size):
-                batch = messages_to_download[i:i + batch_size]
-                tasks = [download_file(item, i + j + 1) for j, item in enumerate(batch)]
-                await asyncio.gather(*tasks)
+            tasks = [download_with_semaphore(item, i + 1) for i, item in enumerate(messages_to_download)]
+            await asyncio.gather(*tasks)
         except asyncio.CancelledError:
             print(f"\n✗ Download interrupted by user (Ctrl+C)")
             print(f"Downloaded {downloaded_count}/{total_files} files before interruption")
