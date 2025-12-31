@@ -247,40 +247,71 @@ class TelegramPhotoDownloader:
             print("No files found matching your criteria.")
             return
 
-        # Phase 2: Download all collected files
-        print("Starting download...\n")
+        # Phase 2: Download all collected files with parallel downloads
+        print("Starting parallel downloads (5 concurrent)...\n")
         photo_count = 0
         video_count = 0
         document_count = 0
         skipped_count = 0
         downloaded_count = 0
+        download_lock = asyncio.Lock()
 
-        for item in messages_to_download:
+        async def download_file(item, index):
+            nonlocal photo_count, video_count, document_count, skipped_count, downloaded_count
+
             message = item['message']
             filename = item['filename']
             file_type = item['type']
             filepath = os.path.join(chat_dir, filename)
 
-            # Update type counters
-            if file_type == 'photo':
-                photo_count += 1
-            elif file_type == 'video':
-                video_count += 1
-            elif file_type == 'document':
-                document_count += 1
+            # Progress callback to show download progress
+            def progress_callback(current, total):
+                percentage = (current / total) * 100 if total > 0 else 0
+                # Show progress every 10%
+                if int(percentage) % 10 == 0 and int(percentage) > 0:
+                    mb_current = current / (1024 * 1024)
+                    mb_total = total / (1024 * 1024)
+                    print(f"  [{index}/{total_files}] {filename}: {percentage:.0f}% ({mb_current:.1f}/{mb_total:.1f} MB)")
 
-            # Download the file
             try:
-                downloaded_count += 1
-                await self.client.download_media(message.media, filepath)
+                # Download with progress callback
+                await self.client.download_media(
+                    message.media,
+                    filepath,
+                    progress_callback=progress_callback
+                )
+
+                # Update counters (thread-safe)
+                async with download_lock:
+                    downloaded_count += 1
+                    if file_type == 'photo':
+                        photo_count += 1
+                    elif file_type == 'video':
+                        video_count += 1
+                    elif file_type == 'document':
+                        document_count += 1
+
                 print(f"✓ Downloaded {downloaded_count}/{total_files}: {filename}")
+
             except asyncio.CancelledError:
-                print(f"\n✗ Download interrupted by user (Ctrl+C)")
-                print(f"Downloaded {downloaded_count - 1}/{total_files} files before interruption")
-                return
+                raise  # Re-raise to propagate cancellation
             except Exception as e:
+                async with download_lock:
+                    downloaded_count += 1
+                    skipped_count += 1
                 print(f"✗ Failed {downloaded_count}/{total_files}: {filename} - {e}")
-                skipped_count += 1
+
+        # Download files in batches of 5 concurrent downloads
+        batch_size = 5
+        try:
+            for i in range(0, len(messages_to_download), batch_size):
+                batch = messages_to_download[i:i + batch_size]
+                tasks = [download_file(item, i + j + 1) for j, item in enumerate(batch)]
+                await asyncio.gather(*tasks)
+        except asyncio.CancelledError:
+            print(f"\n✗ Download interrupted by user (Ctrl+C)")
+            print(f"Downloaded {downloaded_count}/{total_files} files before interruption")
+            return
 
         print(f"\n{'='*50}")
         print(f"Download Summary:")
