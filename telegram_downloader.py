@@ -241,7 +241,7 @@ class TelegramPhotoDownloader:
                     })
 
         total_files = len(messages_to_download)
-        print(f"\nFound {total_files} file(s) to download.\n")
+        print(f"\nFound {total_files} file(s) to download from {message_scan_count} messages scanned.\n")
 
         if total_files == 0:
             print("No files found matching your criteria.")
