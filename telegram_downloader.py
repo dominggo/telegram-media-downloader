@@ -159,19 +159,18 @@ class TelegramPhotoDownloader:
                 print("No files found matching your criteria.")
                 return
 
-        # Download files
-        if show_count:
-            print("Starting download...\n")
-        else:
-            print("Starting download (counting disabled for faster start)...\n")
-        photo_count = 0
-        video_count = 0
-        document_count = 0
-        skipped_count = 0
-        downloaded_count = 0
+        # Phase 1: Collect all matching messages
+        print("Collecting messages with media...\n")
+        messages_to_download = []
+        message_scan_count = 0
 
-        # Iterate through messages
         async for message in self.client.iter_messages(chat, reverse=False):
+            message_scan_count += 1
+
+            # Show progress every 500 messages
+            if message_scan_count % 500 == 0:
+                print(f"Scanned {message_scan_count} messages, found {len(messages_to_download)} files...")
+
             # Check date range
             if start_date and message.date < start_date:
                 continue
@@ -182,36 +181,15 @@ class TelegramPhotoDownloader:
             if not message.media:
                 continue
 
-            downloaded = False
-
             # Check for photos
             if 'photo' in media_types and isinstance(message.media, MessageMediaPhoto):
-                photo_count += 1
                 timestamp = message.date.strftime('%Y%m%d_%H%M%S')
                 filename = f"{timestamp}_msg{message.id}.jpg"
-                filepath = os.path.join(chat_dir, filename)
-
-                try:
-                    downloaded_count += 1
-                    await self.client.download_media(message.media, filepath)
-                    if show_count:
-                        print(f"✓ Downloaded {downloaded_count}/{total_files}: {filename}")
-                    else:
-                        print(f"✓ Downloaded {downloaded_count}: {filename}")
-                    downloaded = True
-                except asyncio.CancelledError:
-                    print(f"\n✗ Download interrupted by user (Ctrl+C)")
-                    if show_count:
-                        print(f"Downloaded {downloaded_count - 1}/{total_files} files before interruption")
-                    else:
-                        print(f"Downloaded {downloaded_count - 1} files before interruption")
-                    return
-                except Exception as e:
-                    if show_count:
-                        print(f"✗ Failed {downloaded_count}/{total_files}: {filename} - {e}")
-                    else:
-                        print(f"✗ Failed {downloaded_count}: {filename} - {e}")
-                    skipped_count += 1
+                messages_to_download.append({
+                    'message': message,
+                    'filename': filename,
+                    'type': 'photo'
+                })
 
             # Check for videos and documents
             elif isinstance(message.media, MessageMediaDocument):
@@ -227,10 +205,7 @@ class TelegramPhotoDownloader:
 
                 # Check for videos
                 if 'video' in media_types and mime_type.startswith('video/'):
-                    video_count += 1
                     timestamp = message.date.strftime('%Y%m%d_%H%M%S')
-
-                    # Get file extension from mime type or filename
                     if original_filename:
                         ext = os.path.splitext(original_filename)[1].lstrip('.')
                         base_name = os.path.splitext(original_filename)[0]
@@ -241,29 +216,11 @@ class TelegramPhotoDownloader:
                             ext = 'mov'
                         filename = f"{timestamp}_msg{message.id}.{ext}"
 
-                    filepath = os.path.join(chat_dir, filename)
-
-                    try:
-                        downloaded_count += 1
-                        await self.client.download_media(message.media, filepath)
-                        if show_count:
-                            print(f"✓ Downloaded {downloaded_count}/{total_files}: {filename}")
-                        else:
-                            print(f"✓ Downloaded {downloaded_count}: {filename}")
-                        downloaded = True
-                    except asyncio.CancelledError:
-                        print(f"\n✗ Download interrupted by user (Ctrl+C)")
-                        if show_count:
-                            print(f"Downloaded {downloaded_count - 1}/{total_files} files before interruption")
-                        else:
-                            print(f"Downloaded {downloaded_count - 1} files before interruption")
-                        return
-                    except Exception as e:
-                        if show_count:
-                            print(f"✗ Failed {downloaded_count}/{total_files}: {filename} - {e}")
-                        else:
-                            print(f"✗ Failed {downloaded_count}: {filename} - {e}")
-                        skipped_count += 1
+                    messages_to_download.append({
+                        'message': message,
+                        'filename': filename,
+                        'type': 'video'
+                    })
 
                 # Check for documents
                 elif 'document' in media_types and original_filename:
@@ -274,34 +231,56 @@ class TelegramPhotoDownloader:
                     if file_extensions and file_ext not in file_extensions:
                         continue
 
-                    document_count += 1
                     timestamp = message.date.strftime('%Y%m%d_%H%M%S')
-
-                    # Use original filename with date+time prefix
                     filename = f"{timestamp}_{original_filename}"
-                    filepath = os.path.join(chat_dir, filename)
 
-                    try:
-                        downloaded_count += 1
-                        await self.client.download_media(message.media, filepath)
-                        if show_count:
-                            print(f"✓ Downloaded {downloaded_count}/{total_files}: {filename}")
-                        else:
-                            print(f"✓ Downloaded {downloaded_count}: {filename}")
-                        downloaded = True
-                    except asyncio.CancelledError:
-                        print(f"\n✗ Download interrupted by user (Ctrl+C)")
-                        if show_count:
-                            print(f"Downloaded {downloaded_count - 1}/{total_files} files before interruption")
-                        else:
-                            print(f"Downloaded {downloaded_count - 1} files before interruption")
-                        return
-                    except Exception as e:
-                        if show_count:
-                            print(f"✗ Failed {downloaded_count}/{total_files}: {filename} - {e}")
-                        else:
-                            print(f"✗ Failed {downloaded_count}: {filename} - {e}")
-                        skipped_count += 1
+                    messages_to_download.append({
+                        'message': message,
+                        'filename': filename,
+                        'type': 'document'
+                    })
+
+        total_files = len(messages_to_download)
+        print(f"\nFound {total_files} file(s) to download.\n")
+
+        if total_files == 0:
+            print("No files found matching your criteria.")
+            return
+
+        # Phase 2: Download all collected files
+        print("Starting download...\n")
+        photo_count = 0
+        video_count = 0
+        document_count = 0
+        skipped_count = 0
+        downloaded_count = 0
+
+        for item in messages_to_download:
+            message = item['message']
+            filename = item['filename']
+            file_type = item['type']
+            filepath = os.path.join(chat_dir, filename)
+
+            # Update type counters
+            if file_type == 'photo':
+                photo_count += 1
+            elif file_type == 'video':
+                video_count += 1
+            elif file_type == 'document':
+                document_count += 1
+
+            # Download the file
+            try:
+                downloaded_count += 1
+                await self.client.download_media(message.media, filepath)
+                print(f"✓ Downloaded {downloaded_count}/{total_files}: {filename}")
+            except asyncio.CancelledError:
+                print(f"\n✗ Download interrupted by user (Ctrl+C)")
+                print(f"Downloaded {downloaded_count - 1}/{total_files} files before interruption")
+                return
+            except Exception as e:
+                print(f"✗ Failed {downloaded_count}/{total_files}: {filename} - {e}")
+                skipped_count += 1
 
         print(f"\n{'='*50}")
         print(f"Download Summary:")
