@@ -45,3 +45,6 @@ Thumbs.db
 
 # Environment Variables
 .env
+
+# Claude Code Settings
+.claude/
