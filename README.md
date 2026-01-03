@@ -1,17 +1,42 @@
-# Telegram Media Downloader
+# Telegram Utilities
 
-A Python script that acts as a Telegram client to download photos, videos, and documents from groups/chats based on chat ID, date filters, and file extensions.
+A comprehensive Python toolkit for Telegram automation with MySQL database integration.
 
 ## Features
 
-- Download photos, videos, documents, or any combination from Telegram chats/groups
-- Filter by date range (start date and end date)
-- Filter documents by file extension (e.g., PDF, DOCX, ZIP)
-- Files renamed with date+time prefix: `YYYYMMDD_HHMMSS_<original_filename>.<ext>` (prevents overwrites)
-- List all your available chats to find chat IDs
-- Automatic folder organization by chat name
-- Progress tracking and download summary
-- Support for multiple video formats (mp4, mov, etc.)
+### Current Tools:
+1. **Media Downloader** (`telegram_downloader.py`)
+   - Download photos, videos, documents from chats/groups
+   - Filter by date range and file extension
+   - Parallel downloads with progress tracking
+   - Automatic retry on failures
+
+### Planned Tools:
+2. **Message Analyzer** (Coming soon)
+   - Analyze message patterns and statistics
+   - Export analytics reports
+
+3. **Message Archiver** (Coming soon)
+   - Archive messages to database
+   - Full-text search capabilities
+
+4. **Message Deleter** (Coming soon)
+   - Bulk delete messages by criteria
+   - Safe deletion with confirmation
+
+## Database Structure
+
+All tools use a centralized MySQL database to:
+- Store retrieved message metadata
+- Track download/archive/delete status
+- Enable cross-tool functionality
+- Maintain operation history
+
+**Key Tables:**
+- `messages` - All retrieved message data with status tracking
+- `chats` - Chat/group information
+- `download_log` - Download operation history
+- `action_log` - All tool operation logs
 
 ## Setup
 
@@ -21,177 +46,144 @@ A Python script that acts as a Telegram client to download photos, videos, and d
 pip install -r requirements.txt
 ```
 
-### 2. Get Telegram API Credentials
+### 2. Database Setup
+
+Create a MySQL database and configure connection:
+
+```bash
+# Copy example configuration
+cp my.json.example my.json
+
+# Edit my.json with your credentials
+{
+  "database": {
+    "host": "localhost",
+    "port": 3306,
+    "user": "your_username",
+    "password": "your_password",
+    "database": "telegram_utilities"
+  },
+  "telegram": {
+    "api_id": "your_api_id",
+    "api_hash": "your_api_hash",
+    "phone": "+1234567890"
+  }
+}
+```
+
+Initialize the database schema:
+
+```bash
+python db_connection.py
+```
+
+### 3. Get Telegram API Credentials
 
 1. Go to https://my.telegram.org
 2. Log in with your phone number
-3. Click on "API development tools"
-4. Create a new application (if you haven't already)
-5. Note down your `api_id` and `api_hash`
-
-### 3. Configure Credentials
-
-You can provide credentials in two ways:
-
-**Option A: Environment Variables (Recommended)**
-```bash
-# Windows
-set TELEGRAM_API_ID=your_api_id
-set TELEGRAM_API_HASH=your_api_hash
-set TELEGRAM_PHONE=+1234567890
-
-# Linux/Mac
-export TELEGRAM_API_ID=your_api_id
-export TELEGRAM_API_HASH=your_api_hash
-export TELEGRAM_PHONE=+1234567890
-```
-
-**Option B: Command Line Arguments**
-```bash
-python telegram_photo_downloader.py --api-id YOUR_API_ID --api-hash YOUR_API_HASH --phone +1234567890
-```
+3. Click "API development tools"
+4. Create a new application
+5. Add credentials to `my.json`
 
 ## Usage
 
-### List All Your Chats
-
-First, find the chat ID you want to download from:
+### Media Downloader
 
 ```bash
+# List all your chats
 python telegram_downloader.py --list-chats
-```
 
-This will display all your chats with their IDs.
+# Download photos from a date range
+python telegram_downloader.py --chat-id CHAT_ID --start-date 2024-01-01 --end-date 2024-12-31
 
-### Download All Photos from a Chat
-
-```bash
-python telegram_downloader.py --chat-id CHAT_ID
-```
-
-### Download All Videos from a Chat
-
-```bash
+# Download videos
 python telegram_downloader.py --chat-id CHAT_ID --media-type video
-```
 
-### Download Both Photos and Videos
-
-```bash
-python telegram_downloader.py --chat-id CHAT_ID --media-type both
-```
-
-### Download Documents (All Types)
-
-```bash
-python telegram_downloader.py --chat-id CHAT_ID --media-type document
-```
-
-### Download Specific File Types
-
-```bash
-# Download only PDF files
-python telegram_downloader.py --chat-id CHAT_ID --media-type document --extensions pdf
-
-# Download PDF and DOCX files
+# Download specific document types
 python telegram_downloader.py --chat-id CHAT_ID --media-type document --extensions pdf,docx
 
-# Download multiple file types
-python telegram_downloader.py --chat-id CHAT_ID --media-type document --extensions pdf,docx,zip,xlsx
-```
-
-### Download Media from a Specific Date Range
-
-```bash
-# Download photos from January 2024
-python telegram_downloader.py --chat-id CHAT_ID --start-date 2024-01-01 --end-date 2024-01-31
-
-# Download videos from December 2024
-python telegram_downloader.py --chat-id CHAT_ID --start-date 2024-12-01 --end-date 2024-12-31 --media-type video
-
-# Download PDF files from December 2024
-python telegram_downloader.py --chat-id CHAT_ID --start-date 2024-12-01 --end-date 2024-12-31 --media-type document --extensions pdf
-
-# Download all media types from a specific date with time
-python telegram_downloader.py --chat-id CHAT_ID --start-date "2024-01-01 10:00:00" --end-date "2024-01-01 18:00:00" --media-type all
-```
-
-### Download Everything
-
-```bash
-# Download photos, videos, and all documents
+# Download everything
 python telegram_downloader.py --chat-id CHAT_ID --media-type all
-
-# Download everything from the last 7 days
-python telegram_downloader.py --chat-id CHAT_ID --start-date 2025-12-23 --media-type all
 ```
 
-### Specify Custom Output Directory
+**Features:**
+- Parallel downloads (5 concurrent)
+- Real-time progress tracking
+- Automatic retry on network errors
+- Date/time-stamped filenames (prevents overwrites)
+
+### Database Operations
 
 ```bash
-python telegram_downloader.py --chat-id CHAT_ID --output-dir my_media --media-type both
+# Test database connection
+python db_connection.py
 ```
 
-## Examples
+## File Structure
 
-```bash
-# List all chats
-python telegram_downloader.py --list-chats
-
-# Download all photos from a group
-python telegram_downloader.py --chat-id -1001234567890
-
-# Download all videos from a group
-python telegram_downloader.py --chat-id -1001234567890 --media-type video
-
-# Download all PDF files from a group
-python telegram_downloader.py --chat-id -1001234567890 --media-type document --extensions pdf
-
-# Download PDF and DOCX files from December 2024
-python telegram_downloader.py --chat-id -1001234567890 --start-date 2024-12-01 --end-date 2024-12-31 --media-type document --extensions pdf,docx
-
-# Download both photos and videos
-python telegram_downloader.py --chat-id -1001234567890 --media-type both
-
-# Download everything (photos, videos, all documents)
-python telegram_downloader.py --chat-id -1001234567890 --media-type all
-
-# Download all documents (any file type) from a specific date
-python telegram_downloader.py --chat-id username --start-date 2024-01-01 --media-type document
 ```
+telegram-utilities/
+├── telegram_downloader.py      # Media download tool
+├── db_connection.py            # Database connection module
+├── database_schema.sql         # MySQL database schema
+├── my.json                     # Configuration (not tracked in git)
+├── my.json.example            # Configuration template
+├── requirements.txt           # Python dependencies
+└── README.md                  # This file
+```
+
+## Configuration
+
+### my.json
+Contains all sensitive configuration:
+- MySQL database credentials
+- Telegram API credentials
+- **Never commit this file to git!**
+
+### Database Schema
+The `database_schema.sql` file contains:
+- Complete table definitions
+- Indexes for performance
+- Foreign key relationships
+- Auto-timestamp tracking
 
 ## Notes
 
-- **Chat ID**: Can be a numeric ID (e.g., `-1001234567890` for groups) or a username (e.g., `@username`)
-- **First Run**: On first run, you'll receive a code on Telegram to authenticate
-- **Session**: Authentication is saved in a session file, so you won't need to login again
-- **File Names**:
+- **Chat ID**: Can be numeric (e.g., `-1001234567890`) or username
+- **Session Files**: Telegram session saved as `session_*.session`
+- **File Naming**:
   - Photos: `YYYYMMDD_HHMMSS_msgID.jpg`
-  - Videos: `YYYYMMDD_HHMMSS_<original_filename>.<ext>`
-  - Documents: `YYYYMMDD_HHMMSS_<original_filename>.<ext>`
-- **Folders**: Media files are organized in folders named after the chat
-- **Media Types**:
-  - `--media-type photo` - Photos only
-  - `--media-type video` - Videos only
-  - `--media-type document` - Documents only
-  - `--media-type both` - Photos + Videos
-  - `--media-type all` - Photos + Videos + Documents
-- **File Extensions**: Use `--extensions` to filter specific document types (e.g., `--extensions pdf,docx,zip`)
+  - Videos: `YYYYMMDD_HHMMSS_<filename>.<ext>`
+  - Documents: `YYYYMMDD_HHMMSS_<filename>.<ext>`
 
 ## Troubleshooting
 
+**"Configuration file not found"**
+- Copy `my.json.example` to `my.json` and fill in your credentials
+
+**"Error connecting to MySQL database"**
+- Verify MySQL is running
+- Check credentials in `my.json`
+- Ensure database exists or run `db_connection.py` to create it
+
 **"Missing required credentials"**
-- Make sure you've set the environment variables or provided command line arguments
+- Add Telegram API credentials to `my.json`
 
-**"Error accessing chat"**
-- Verify the chat ID is correct
-- Make sure you're a member of the group/chat
-- For private chats, use the username or numeric ID
+## Development
 
-**"Failed to download"**
-- Some photos might be deleted or restricted
-- Check your internet connection
-- Ensure you have sufficient disk space
+### Adding New Tools
+
+1. Create new `.py` file for your tool
+2. Import `db_connection` module
+3. Use database to store/retrieve message data
+4. Follow existing patterns for error handling
+5. Update README with usage instructions
+
+### Database Schema Changes
+
+1. Edit `database_schema.sql`
+2. Run `python db_connection.py` to apply changes
+3. Test with existing data
 
 ## License
 

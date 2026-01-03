@@ -45,6 +45,7 @@ Thumbs.db
 
 # Environment Variables
 .env
+my.json
 
 # Claude Code Settings
 .claude/

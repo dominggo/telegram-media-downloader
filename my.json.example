@@ -1,0 +1,15 @@
+{
+  "database": {
+    "host": "localhost",
+    "port": 3306,
+    "user": "your_username",
+    "password": "your_password",
+    "database": "telegram_utilities",
+    "charset": "utf8mb4"
+  },
+  "telegram": {
+    "api_id": "your_api_id",
+    "api_hash": "your_api_hash",
+    "phone": "+1234567890"
+  }
+}
