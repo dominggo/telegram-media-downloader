@@ -31,12 +31,15 @@ All tools use a centralized MySQL database to:
 - Track download/archive/delete status
 - Enable cross-tool functionality
 - Maintain operation history
+- Track which machine performed each operation (hostname tracking)
 
 **Key Tables:**
 - `messages` - All retrieved message data with status tracking
+  - `retrieved_hostname` - Machine that scanned/retrieved the message
+  - `download_hostname` - Machine that downloaded the file
 - `chats` - Chat/group information
-- `download_log` - Download operation history
-- `action_log` - All tool operation logs
+- `download_log` - Download operation history with hostname
+- `action_log` - All tool operation logs with hostname
 
 ## Setup
 
@@ -111,25 +114,30 @@ python telegram_downloader.py --chat-id CHAT_ID --media-type all
 - Real-time progress tracking
 - Automatic retry on network errors
 - Date/time-stamped filenames (prevents overwrites)
+- Hostname tracking (tracks which machine retrieved/downloaded each file)
 
 ### Database Operations
 
 ```bash
-# Test database connection
+# Test database connection and initialize schema
 python db_connection.py
+
+# Apply database migrations (if upgrading from older version)
+mysql -u username -p telegram_utilities < database_migration_001_add_hostname.sql
 ```
 
 ## File Structure
 
 ```
 telegram-utilities/
-├── telegram_downloader.py      # Media download tool
-├── db_connection.py            # Database connection module
-├── database_schema.sql         # MySQL database schema
-├── my.json                     # Configuration (not tracked in git)
-├── my.json.example            # Configuration template
-├── requirements.txt           # Python dependencies
-└── README.md                  # This file
+├── telegram_downloader.py               # Media download tool
+├── db_connection.py                     # Database connection module
+├── database_schema.sql                  # MySQL database schema
+├── database_migration_001_add_hostname.sql  # Migration: Add hostname tracking
+├── my.json                              # Configuration (not tracked in git)
+├── my.json.example                      # Configuration template
+├── requirements.txt                     # Python dependencies
+└── README.md                            # This file
 ```
 
 ## Configuration
